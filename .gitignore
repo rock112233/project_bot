@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Project Folders to ignore (only pushing code from MASKOFF_Project)
+/docs/
+/Context Files/
+/datasets/
+/dataset/
+*.csv

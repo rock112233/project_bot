@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MASKOFF - Bot Detection</title>
+  <link rel="stylesheet" href="../static/style.css"/>
+</head>
+<body>
+
+<div class="hero">
+
+  <!-- Latest Twitter Bird Logo Watermark -->
+ <!-- Latest X (Twitter) logo -->
+<svg class="twitter-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path fill="white" d="M18.244 2H21.5l-7.6 8.7L22 22h-6.9l-5.4-6.8L3.8 22H.5l8.2-9.4L2 2h7l4.9 6.2L18.244 2zm-1.2 18h1.9L7.1 4H5.1l11.944 16z"/>
+</svg>
+
+  <nav>
+    <ul>
+      <li><a href="#">Home</a></li>
+      <li><a href="#">About</a></li>
+      <li><a href="#">How it Works</a></li>
+    </ul>
+  </nav>
+
+  <div class="hero-center">
+    <h1>MASKOFF</h1>
+    <p>Identifying Hidden Bot Identities in Twitter Profiles with Explainable AI</p>
+    <div class="search-wrap">
+      <input type="text" id="usernameInput" placeholder="@username"/>
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">Analyze</button>
+    </div>
+    <p class="hint">Try: @sundarpichai, @netflix, @xyz_45</p>
+  </div>
+</div>
+
+<div class="content">
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <p>Scraping profile & running XGBoost model...</p>
+  </div>
+
+  <div class="result-section" id="resultSection">
+
+    <div class="card">
+      <div class="verdict-header">
+        <div class="verdict-icon" id="verdictIcon"></div>
+        <div>
+          <div class="verdict-title" id="verdictTitle"></div>
+          <div class="badge" id="riskBadge"></div>
+        </div>
+      </div>
+      <div class="bar-labels-top"><span>Bot</span><span>Human</span></div>
+      <div class="bar-track">
+        <div class="bar-bot" id="botBar" style="width:0%"></div>
+        <div class="bar-human" id="humanBar" style="width:0%"></div>
+      </div>
+      <div class="bar-labels-bottom">
+        <span class="bot-label" id="botPct">0% Bot</span>
+        <span class="human-label" id="humanPct">0% Human</span>
+      </div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 220 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M25 110 A85 85 0 0 1 195 110"
+            stroke="rgba(255,255,255,0.05)" stroke-width="16" stroke-linecap="round"/>
+          <path d="M25 110 A85 85 0 0 1 195 110"
+            stroke="#e55" stroke-width="16" stroke-linecap="round"
+            stroke-dasharray="267" id="gaugeFill" stroke-dashoffset="267"
+            style="transition:stroke-dashoffset 1.2s ease;"/>
+          <text x="110" y="106" text-anchor="middle"
+            fill="rgba(255,255,255,0.28)" font-size="11" font-family="Inter,sans-serif">
+            Bot Probability
+          </text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Profile Overview</h3>
+      <div class="profile-grid" id="profileGrid"></div>
+    </div>
+
+    <div class="card">
+      <h3>Why this decision?</h3>
+      <p class="explain-sub">These signals influenced the prediction:</p>
+      <div id="featureList"></div>
+    </div>
+
+    <div class="card">
+      <h3>Final Insight</h3>
+      <p class="insight-text" id="finalInsight"></p>
+    </div>
+
+    <button class="btn-again" onclick="reset()">&#9632; Analyze Another Account</button>
+  </div>
+</div>
+
+<script>
+  async function analyze() {
+    const username = document.getElementById('usernameInput').value.trim().replace('@','');
+    if (!username) return;
+    const errorBox = document.getElementById('errorBox');
+    const loader   = document.getElementById('loader');
+    const result   = document.getElementById('resultSection');
+    errorBox.classList.remove('visible');
+    result.classList.remove('visible');
+    loader.classList.add('visible');
+    document.getElementById('analyzeBtn').disabled = true;
+    try {
+      const res  = await fetch(`http://localhost:8000/predict?username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Server error');
+      showResult(data, username);
+    } catch(err) {
+      errorBox.textContent = err.message || 'Cannot connect to backend. Make sure FastAPI is running on port 8000.';
+      errorBox.classList.add('visible');
+    } finally {
+      loader.classList.remove('visible');
+      document.getElementById('analyzeBtn').disabled = false;
+    }
+  }
+
+  function showResult(data, username) {
+    const isBot    = data.prediction === 'Bot';
+    const botPct   = Math.round(data.bot_probability * 100);
+    const humanPct = 100 - botPct;
+
+    document.getElementById('verdictIcon').textContent  = isBot ? '🤖' : '👤';
+    document.getElementById('verdictIcon').className    = `verdict-icon ${isBot?'bot':'human'}`;
+    document.getElementById('verdictTitle').textContent = isBot ? 'Bot Detected' : 'Human Detected';
+    document.getElementById('verdictTitle').className   = `verdict-title ${isBot?'bot':'human'}`;
+    const badge = document.getElementById('riskBadge');
+    badge.textContent = isBot ? 'High Risk' : 'Low Risk';
+    badge.className   = `badge ${isBot?'high-risk':'low-risk'}`;
+
+    setTimeout(() => {
+      document.getElementById('botBar').style.width   = botPct + '%';
+      document.getElementById('humanBar').style.width = humanPct + '%';
+    }, 100);
+    document.getElementById('botPct').textContent   = `${botPct}% Bot`;
+    document.getElementById('humanPct').textContent = `${humanPct}% Human`;
+
+    const offset = 267 - (botPct/100)*267;
+    setTimeout(() => { document.getElementById('gaugeFill').style.strokeDashoffset = offset; }, 200);
+
+    const p = data.profile || {};
+    const fields = [
+      ['Username','@'+(p.username||username)],['Display Name',p.display_name||'-'],
+      ['Followers',p.followers??'-'],['Following',p.following??'-'],
+      ['Tweets',p.tweets??'-'],['Joined',p.joined||'-'],
+      ['Location',p.location||'-'],['Verified',p.verified?'Yes':'No'],
+      ['Has Bio',p.has_bio?'Yes':'No'],['Pinned Tweet',p.pinned_tweet?'Yes':'No'],
+    ];
+    document.getElementById('profileGrid').innerHTML = fields.map(([l,v])=>`
+      <div class="profile-field"><label>${l}</label><span>${v}</span></div>`).join('');
+
+    document.getElementById('featureList').innerHTML = (data.features||[]).map(f=>`
+      <div class="feature-row">
+        <div class="feature-name">${f.name} &mdash; value: ${f.value}</div>
+        <div class="feature-pill ${f.direction==='increases'?'negative':'positive'}">${f.explanation}</div>
+      </div>`).join('');
+
+    document.getElementById('finalInsight').textContent = data.insight || '';
+    document.getElementById('resultSection').classList.add('visible');
+    window.scrollTo({top: document.querySelector('.content').offsetTop, behavior:'smooth'});
+  }
+
+  function reset() {
+    document.getElementById('resultSection').classList.remove('visible');
+    document.getElementById('usernameInput').value = '';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  document.getElementById('usernameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') analyze();
+  });
+</script>
+</body>
+</html>

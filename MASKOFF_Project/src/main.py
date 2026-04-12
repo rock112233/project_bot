@@ -36,12 +36,11 @@ FEATURE_COLUMNS = [
     "friends_count",
     "statuses_count",
     "favourites_count",
-    "verified",
     "default_profile_image",
     "account_age_days",
     "followers_friends_ratio",
     "statuses_per_day",
-    "favourites_per_status",   # 👈 FIXED POSITION
+    "favourites_per_status",
     "log_followers",
     "log_friends",
     "log_statuses"

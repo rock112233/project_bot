@@ -6,7 +6,7 @@ import math
 import joblib
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE
+from imblearn.combine import SMOTETomek
 from sklearn.metrics import accuracy_score, classification_report
 
 print("Loading labels...")
@@ -82,9 +82,9 @@ y = df['label']
 print(f"Dataset shape: {X.shape}")
 print(f"Class distribution before SMOTE: \\n{y.value_counts()}")
 
-print("Balancing classes using SMOTE...")
-smote = SMOTE(random_state=42)
-X_res, y_res = smote.fit_resample(X, y)
+print("Balancing classes using SMOTE + Tomek Links...")
+smote_tomek = SMOTETomek(random_state=42)
+X_res, y_res = smote_tomek.fit_resample(X, y)
 
 X_train, X_test, y_train, y_test = train_test_split(X_res, y_res, test_size=0.2, random_state=42)
 

@@ -1,97 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MASKOFF - Bot Detection</title>
+  <meta name="description" content="MASKOFF uses Explainable AI to identify hidden bot identities in Twitter/X profiles with behavioral analysis."/>
   <link rel="stylesheet" href="/static/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
 <div class="hero">
+  <!-- X watermark -->
+  <svg class="twitter-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path fill="white" d="M18.244 2H21.5l-7.6 8.7L22 22h-6.9l-5.4-6.8L3.8 22H.5l8.2-9.4L2 2h7l4.9 6.2L18.244 2zm-1.2 18h1.9L7.1 4H5.1l11.944 16z"/>
+  </svg>
 
-  <!-- Latest Twitter Bird Logo Watermark -->
- <!-- Latest X (Twitter) logo -->
-<svg class="twitter-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <path fill="white" d="M18.244 2H21.5l-7.6 8.7L22 22h-6.9l-5.4-6.8L3.8 22H.5l8.2-9.4L2 2h7l4.9 6.2L18.244 2zm-1.2 18h1.9L7.1 4H5.1l11.944 16z"/>
-</svg>
-
-  <nav>
-    <ul>
-      <li><a href="#">Home</a></li>
-      <li><a href="#">About</a></li>
-      <li><a href="#">How it Works</a></li>
-    </ul>
-  </nav>
+  <!-- Theme Toggle (Bulb) -->
+  <div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Light/Dark Mode">
+    <svg class="bulb-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path class="bulb-glass" d="M32 6C21.5 6 13 14.5 13 25c0 7.2 4 13.5 10 16.8V48h18v-6.2c6-3.3 10-9.6 10-16.8C51 14.5 42.5 6 32 6z"/>
+      <rect class="bulb-base" x="22" y="50" width="20" height="4" rx="2"/>
+      <rect class="bulb-base" x="24" y="56" width="16" height="3" rx="1.5"/>
+      <line class="bulb-filament" x1="27" y1="30" x2="32" y2="20"/>
+      <line class="bulb-filament" x1="37" y1="30" x2="32" y2="20"/>
+      <line class="bulb-filament" x1="32" y1="30" x2="32" y2="20"/>
+    </svg>
+    <div class="bulb-glow" id="bulbGlow"></div>
+  </div>
 
   <div class="hero-center">
     <h1>MASKOFF</h1>
-    <p>Identifying Hidden Bot Identities in Twitter Profiles with Explainable AI</p>
-    <div class="search-wrap">
-      <input type="text" id="usernameInput" placeholder="@username"/>
+    <p class="hero-subtitle">Identifying Hidden Bot Identities in Twitter Profiles with Explainable AI</p>
+    <div class="search-wrap" id="searchWrap">
+      <input type="text" id="usernameInput" placeholder="@username" autocomplete="off"/>
       <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">Analyze</button>
     </div>
     <p class="hint">Try: @sundarpichai, @netflix, @xyz_45</p>
   </div>
 </div>
 
-<div class="content">
+<!-- Results Page -->
+<div class="results-page" id="resultsPage">
   <div class="error-box" id="errorBox"></div>
-
   <div class="loader" id="loader">
     <div class="spinner"></div>
-    <p>Scraping profile & running XGBoost model...</p>
+    <p>Scraping profile &amp; running XGBoost model...</p>
   </div>
 
   <div class="result-section" id="resultSection">
-
-    <div class="card">
-      <div class="verdict-header">
-        <div class="verdict-icon" id="verdictIcon"></div>
-        <div>
-          <div class="verdict-title" id="verdictTitle"></div>
-          <div class="badge" id="riskBadge"></div>
+    <div class="results-grid">
+      <!-- TOP LEFT: Gauge/Verdict -->
+      <div class="card card-gauge" style="grid-area:gauge;">
+        <div class="verdict-header">
+          <div class="verdict-icon" id="verdictIcon"></div>
+          <div>
+            <div class="verdict-title" id="verdictTitle"></div>
+            <div class="badge" id="riskBadge"></div>
+          </div>
+        </div>
+        <div class="bar-labels-top"><span>Bot</span><span>Human</span></div>
+        <div class="bar-track">
+          <div class="bar-bot" id="botBar" style="width:0%"></div>
+          <div class="bar-human" id="humanBar" style="width:0%"></div>
+        </div>
+        <div class="bar-labels-bottom">
+          <span class="bot-label" id="botPct">0% Bot</span>
+          <span class="human-label" id="humanPct">0% Human</span>
+        </div>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 240 135" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Colored background segments: green → yellow → red -->
+            <defs>
+              <linearGradient id="gaugeGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#22c55e"/>
+                <stop offset="35%" stop-color="#4ade80"/>
+                <stop offset="50%" stop-color="#f59e0b"/>
+                <stop offset="75%" stop-color="#f97316"/>
+                <stop offset="100%" stop-color="#ef4444"/>
+              </linearGradient>
+            </defs>
+            <!-- Full colored arc background -->
+            <path d="M30 115 A90 90 0 0 1 210 115"
+              stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round" fill="none" opacity="0.2"/>
+            <!-- Active fill arc -->
+            <path d="M30 115 A90 90 0 0 1 210 115"
+              class="gauge-fill-path" stroke-width="20" stroke-linecap="round"
+              stroke-dasharray="283" id="gaugeFill" stroke-dashoffset="283" stroke="url(#gaugeGradient)"/>
+            <!-- Tick marks -->
+            <text x="22" y="125" class="gauge-label" font-size="9" text-anchor="middle">0%</text>
+            <text x="120" y="22" class="gauge-label" font-size="9" text-anchor="middle">50%</text>
+            <text x="218" y="125" class="gauge-label" font-size="9" text-anchor="middle">100%</text>
+            <!-- Needle -->
+            <line x1="120" y1="115" x2="120" y2="35" class="gauge-needle" id="gaugeNeedle"
+              stroke-width="3" stroke-linecap="round"/>
+            <circle cx="120" cy="115" r="7" class="gauge-dot"/>
+            <text x="120" y="132" text-anchor="middle" class="gauge-label" font-size="10">Bot Probability</text>
+          </svg>
         </div>
       </div>
-      <div class="bar-labels-top"><span>Bot</span><span>Human</span></div>
-      <div class="bar-track">
-        <div class="bar-bot" id="botBar" style="width:0%"></div>
-        <div class="bar-human" id="humanBar" style="width:0%"></div>
-      </div>
-      <div class="bar-labels-bottom">
-        <span class="bot-label" id="botPct">0% Bot</span>
-        <span class="human-label" id="humanPct">0% Human</span>
-      </div>
-      <div class="gauge-wrap">
-        <svg viewBox="0 0 220 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M25 110 A85 85 0 0 1 195 110"
-            stroke="rgba(255,255,255,0.05)" stroke-width="16" stroke-linecap="round"/>
-          <path d="M25 110 A85 85 0 0 1 195 110"
-            stroke="#e55" stroke-width="16" stroke-linecap="round"
-            stroke-dasharray="267" id="gaugeFill" stroke-dashoffset="267"
-            style="transition:stroke-dashoffset 1.2s ease;"/>
-          <text x="110" y="106" text-anchor="middle"
-            fill="rgba(255,255,255,0.28)" font-size="11" font-family="Inter,sans-serif">
-            Bot Probability
-          </text>
-        </svg>
-      </div>
-    </div>
 
-    <div class="card">
-      <h3>Profile Overview</h3>
-      <div class="profile-grid" id="profileGrid"></div>
-    </div>
+      <!-- TOP RIGHT: Why This Decision -->
+      <div class="card card-why" style="grid-area:why;">
+        <h3>Why This Decision?</h3>
+        <p class="explain-sub">Here's what influenced MASKOFF's analysis:</p>
+        <div id="featureList"></div>
+      </div>
 
-    <div class="card">
-      <h3>Why this decision?</h3>
-      <p class="explain-sub">These signals influenced the prediction:</p>
-      <div id="featureList"></div>
-    </div>
+      <!-- BOTTOM LEFT: Profile Overview -->
+      <div class="card card-profile" style="grid-area:profile;">
+        <h3>Profile Overview</h3>
+        <div class="profile-grid" id="profileGrid"></div>
+        <div class="bio-block" id="bioBlock" style="display:none;">
+          <div class="bio-label">BIO</div>
+          <p class="bio-text" id="bioText"></p>
+        </div>
+        <div class="quick-stats" id="quickStats"></div>
+      </div>
 
-    <div class="card">
-      <h3>Final Insight</h3>
-      <p class="insight-text" id="finalInsight"></p>
+      <!-- BOTTOM RIGHT: Final Insight + SHAP Waterfall -->
+      <div class="card card-insight" style="grid-area:insight;">
+        <h3>Final Insight</h3>
+        <p class="insight-text" id="finalInsight"></p>
+        <div class="waterfall-section">
+          <h4 class="waterfall-title">Feature Impact — What Pushed the Score?</h4>
+          <div class="waterfall-chart" id="waterfallChart"></div>
+          <div class="waterfall-legend">
+            <span class="wf-legend-item"><span class="wf-dot wf-dot-bot"></span> Pushes toward Bot</span>
+            <span class="wf-legend-item"><span class="wf-dot wf-dot-human"></span> Pushes toward Human</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <button class="btn-again" onclick="reset()">&#9632; Analyze Another Account</button>
@@ -99,23 +138,45 @@
 </div>
 
 <script>
+  // ── Theme Toggle ──
+  function toggleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('maskoff-theme', next);
+  }
+
+  // Restore saved theme
+  (function() {
+    const saved = localStorage.getItem('maskoff-theme');
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+  })();
+
+  // ── Analyze ──
   async function analyze() {
     const username = document.getElementById('usernameInput').value.trim().replace('@','');
     if (!username) return;
     const errorBox = document.getElementById('errorBox');
     const loader   = document.getElementById('loader');
-    const result   = document.getElementById('resultSection');
+    const page     = document.getElementById('resultsPage');
+
+    page.classList.add('active');
     errorBox.classList.remove('visible');
-    result.classList.remove('visible');
+    document.getElementById('resultSection').classList.remove('visible');
     loader.classList.add('visible');
     document.getElementById('analyzeBtn').disabled = true;
+
+    // Scroll to results area
+    page.scrollIntoView({ behavior: 'smooth' });
+
     try {
       const res  = await fetch(`/predict?username=${encodeURIComponent(username)}`);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Server error');
       showResult(data, username);
     } catch(err) {
-      errorBox.textContent = err.message || 'Cannot connect to backend. Make sure FastAPI is running on port 8000.';
+      errorBox.textContent = err.message || 'Cannot connect to backend.';
       errorBox.classList.add('visible');
     } finally {
       loader.classList.remove('visible');
@@ -128,24 +189,47 @@
     const botPct   = Math.round(data.bot_probability * 100);
     const humanPct = 100 - botPct;
 
-    document.getElementById('verdictIcon').textContent  = isBot ? '🤖' : '👤';
-    document.getElementById('verdictIcon').className    = `verdict-icon ${isBot?'bot':'human'}`;
+    // First ensure the page is active so layout is computed
+    document.getElementById('resultsPage').classList.add('active');
+    document.getElementById('resultSection').classList.add('visible');
+
+    // Verdict — profile image or emoji
+    const verdictIcon = document.getElementById('verdictIcon');
+    const avatarUrl = data.profile?.avatar_url;
+    if (avatarUrl) {
+      verdictIcon.innerHTML = `<img src="${avatarUrl}" alt="avatar" class="verdict-avatar"/>`;
+      verdictIcon.className = 'verdict-icon avatar-loaded';
+    } else {
+      verdictIcon.textContent = isBot ? '🤖' : '👤';
+      verdictIcon.className = `verdict-icon ${isBot?'bot':'human'}`;
+    }
+
     document.getElementById('verdictTitle').textContent = isBot ? 'Bot Detected' : 'Human Detected';
     document.getElementById('verdictTitle').className   = `verdict-title ${isBot?'bot':'human'}`;
     const badge = document.getElementById('riskBadge');
-    badge.textContent = isBot ? 'High Risk' : 'Low Risk';
-    badge.className   = `badge ${isBot?'high-risk':'low-risk'}`;
+    const riskLevel = botPct > 70 ? 'high' : botPct > 40 ? 'medium' : 'low';
+    badge.textContent = riskLevel === 'high' ? 'HIGH RISK' : riskLevel === 'medium' ? 'MEDIUM RISK' : 'LOW RISK';
+    badge.className   = `badge ${riskLevel}-risk`;
 
-    setTimeout(() => {
-      document.getElementById('botBar').style.width   = botPct + '%';
-      document.getElementById('humanBar').style.width = humanPct + '%';
-    }, 100);
+    // Wait a frame before starting animations so CSS transitions trigger correctly
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.getElementById('botBar').style.width   = botPct + '%';
+        document.getElementById('humanBar').style.width = humanPct + '%';
+
+        const arcOffset = 283 - (botPct / 100) * 283;
+        document.getElementById('gaugeFill').style.strokeDashoffset = arcOffset;
+
+        const needle = document.getElementById('gaugeNeedle');
+        const needleAngle = -90 + (botPct / 100) * 180;
+        needle.style.transform = `rotate(${needleAngle}deg)`;
+      }, 100);
+    });
+
     document.getElementById('botPct').textContent   = `${botPct}% Bot`;
     document.getElementById('humanPct').textContent = `${humanPct}% Human`;
 
-    const offset = 267 - (botPct/100)*267;
-    setTimeout(() => { document.getElementById('gaugeFill').style.strokeDashoffset = offset; }, 200);
-
+    // Profile
     const p = data.profile || {};
     const fields = [
       ['Username','@'+(p.username||username)],['Display Name',p.display_name||'-'],
@@ -157,20 +241,94 @@
     document.getElementById('profileGrid').innerHTML = fields.map(([l,v])=>`
       <div class="profile-field"><label>${l}</label><span>${v}</span></div>`).join('');
 
-    document.getElementById('featureList').innerHTML = (data.features||[]).map(f=>`
-      <div class="feature-row">
-        <div class="feature-name">${f.name} &mdash; value: ${f.value}</div>
-        <div class="feature-pill ${f.direction==='increases'?'negative':'positive'}">${f.explanation}</div>
+    // Bio
+    const ds = data.derived_stats || {};
+    const bioBlock = document.getElementById('bioBlock');
+    if (ds.bio) {
+      document.getElementById('bioText').textContent = ds.bio;
+      bioBlock.style.display = 'block';
+    } else {
+      bioBlock.style.display = 'none';
+    }
+
+    // Quick Stats
+    const statsData = [
+      { icon: '📅', label: 'Account Age', value: ds.account_age_human || '-', bar: Math.min((ds.tweets_per_day > 0 ? 100 : 0), 100) },
+      { icon: '📊', label: 'Tweets/Day', value: String(ds.tweets_per_day || 0), bar: Math.min(ds.tweets_per_day * 10, 100) },
+      { icon: '💬', label: 'Likes/Tweet', value: String(ds.engagement_rate || 0), bar: Math.min(ds.engagement_rate * 20, 100) },
+      { icon: '👥', label: 'Follower Ratio', value: ds.follower_ratio > 1000 ? (ds.follower_ratio/1000).toFixed(1)+'K:1' : (ds.follower_ratio||0)+':1', bar: Math.min(Math.log10(Math.max(ds.follower_ratio,1))*25, 100) },
+    ];
+    document.getElementById('quickStats').innerHTML = statsData.map(s => `
+      <div class="qs-card">
+        <div class="qs-top">
+          <span class="qs-icon">${s.icon}</span>
+          <span class="qs-label">${s.label}</span>
+        </div>
+        <div class="qs-value">${s.value}</div>
+        <div class="qs-bar-track"><div class="qs-bar-fill" style="width:${s.bar}%"></div></div>
       </div>`).join('');
 
+    // Features — with value labels and sentiment-based icons
+    document.getElementById('featureList').innerHTML = (data.features||[]).map(f=>{
+      const isBad = f.sentiment === 'bad';
+      const icon = isBad ? '⚠️' : '✅';
+      const pillClass = isBad ? 'negative' : 'positive';
+      const valLabel = f.value_label || f.value;
+      return `
+      <div class="feature-row">
+        <div class="feature-left">
+          <span class="feature-icon">${icon}</span>
+          <span class="feature-name">${f.name}</span>
+          <span class="feature-value" title="${f.name}: raw value used by the model">${f.value}</span>
+          <span class="feature-value-label">${valLabel}</span>
+        </div>
+        <div class="feature-pill ${pillClass}">${f.explanation}</div>
+      </div>`;
+    }).join('');
+
+    // Final Insight
     document.getElementById('finalInsight').textContent = data.insight || '';
-    document.getElementById('resultSection').classList.add('visible');
-    window.scrollTo({top: document.querySelector('.content').offsetTop, behavior:'smooth'});
+
+    // SHAP Waterfall Chart
+    renderWaterfall(data.shap_waterfall || []);
+
+    // Auto-scroll to top of results
+    document.getElementById('resultsPage').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── Waterfall Chart Renderer ──
+  function renderWaterfall(shapData) {
+    const container = document.getElementById('waterfallChart');
+    if (!shapData.length) { container.innerHTML = ''; return; }
+
+    const maxAbs = Math.max(...shapData.map(d => Math.abs(d.impact)), 0.001);
+
+    container.innerHTML = shapData.map(d => {
+      const pct = Math.abs(d.impact) / maxAbs * 100;
+      const isBot = d.impact > 0;
+      const barClass = isBot ? 'wf-bar-bot' : 'wf-bar-human';
+      const side = isBot ? 'right' : 'left';
+
+      return `
+      <div class="wf-row">
+        <span class="wf-label">${d.name}</span>
+        <div class="wf-track">
+          <div class="wf-center-line"></div>
+          <div class="wf-bar ${barClass}" style="width:${pct/2}%;${side === 'right' ? 'left:50%' : 'right:50%'}"></div>
+        </div>
+        <span class="wf-impact ${isBot ? 'wf-impact-bot' : 'wf-impact-human'}">${d.impact > 0 ? '+' : ''}${d.impact.toFixed(3)}</span>
+      </div>`;
+    }).join('');
   }
 
   function reset() {
     document.getElementById('resultSection').classList.remove('visible');
+    document.getElementById('resultsPage').classList.remove('active');
     document.getElementById('usernameInput').value = '';
+    document.getElementById('gaugeFill').style.strokeDashoffset = '283';
+    document.getElementById('gaugeNeedle').style.transform = 'rotate(0deg)';
+    document.getElementById('botBar').style.width = '0%';
+    document.getElementById('humanBar').style.width = '0%';
     window.scrollTo({top:0, behavior:'smooth'});
   }
 

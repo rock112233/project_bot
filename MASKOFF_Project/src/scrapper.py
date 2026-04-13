@@ -51,6 +51,7 @@ def scrape_twitter_user(username):
             "profile": {
                 "username": username,
                 "display_name": user.get("name", username),
+                "avatar_url": avatar_url if avatar_url and "default_profile" not in avatar_url else "",
                 "followers": f,
                 "following": fg,
                 "tweets": t,

@@ -1,89 +1,53 @@
-# MASKOFF Bot Detection 🎭🤖
+# 🎭 MASKOFF: Explainable Bot Detection Platform
 
-MASKOFF is a highly accurate Machine Learning tool designed to identify hidden bot identities and fake accounts on Twitter (X) by evaluating live profile metrics. The system utilizes an XGBoost predictive model along with SHAP (SHapley Additive exPlanations) to provide explainable insights indicating *why* an account was flagged.
+MASKOFF is a high-performance web platform that utilizes Machine Learning and Explainable AI (XAI) to analyze Twitter/X profiles and predict the probability of an account being a bot. 
+
+## 🚀 Newly Added Updates & Features
+
+- **Value-Based Sentiment Explanations:** The AI reasoning has been upgraded with value-based sentiment logic, giving users crystal clear, human-readable explanations about *why* a specific behavior triggered a flag (e.g., "Account lacks a description, raising bot suspicion").
+- **Live Insight Typewriter Animation:** The final AI verdict is now delivered through a sleek, delayed typewriter animation, providing a dynamic "AI thinking" aesthetic when analyzing profiles.
+- **Interactive Profile Cards:** Usernames displayed in the profile block are now hyperlinked, allowing you to instantly jump to the live X.com profile of the analyzed account.
+- **Premium Minimalist UI Overhaul:** Swapped the aggressive neon accents for a hyper-professional Slate & Blue design system with a completely refactored 2x2 responsive Grid Layout. 
+- **SHAP Waterfall Component:** Implemented a bidirectional waterfall impact chart showing the exact numerical weight of each behavioral tracking metric.
+- **Backend Optimization:** Deeply optimized the FastAPI asynchronous inference pipeline, achieving zero-blocking I/O and blazing fast response times by removing payload overhead.
 
 ## 📂 Project Structure
 
-This repository is strictly organized to separate code from datasets and documentation.
+This repository uses a clean, production-ready architecture layout:
 
-```
-MASKOFF_Project/          # Core Application
-├── src/                  
-│   ├── main.py           # FastAPI Backend Server & ML routing
-│   └── scrapper.py       # Twitter data extraction module
-├── models/               
-│   └── xgboost_model.pkl # Trained Machine Learning Model
-├── config/               
-│   └── feature_cols.json # Model Feature Maps
-├── static/               
-│   └── style.css         # UI Styling
-└── templates/            
-    └── index.html        # UI Frontend
-```
-> **Note**: Datasets, Jupyter Notebooks, Context Files, and Documentation are purposefully excluded from version control via `.gitignore` to maintain a clean production repository.
-
----
-
-## 🚀 How to Run the Project Locally
-
-Follow these step-by-step instructions to get the application running on your Windows machine.
-
-### 1. Initial Setup & Virtual Environment
-
-Start by cloning the project and setting up an isolated virtual environment using `uv` (a fast Python package installer and environment manager).
-
-```powershell
-# Step 1: Open your terminal inside the project root
-# Step 2: Create a virtual environment
-uv venv
-
-# Step 3: Activate the virtual environment
-.\.venv\Scripts\activate
-
-# Step 4: Install dependencies
-uv pip install fastapi uvicorn requests python-multipart jinja2 xgboost scikit-learn shap pandas numpy python-dotenv tweepy
+```text
+├── docs/                     -> Extensive project documentation 
+├── MASKOFF_Project/          -> Core Application
+│   ├── config/               -> Model configuration and JSON feature maps
+│   ├── src/                  -> Application backend (FastAPI inference & custom webscraper)
+│   ├── static/               -> Application frontend CSS (Light/Dark themes)
+│   └── templates/            -> Application frontend HTML (Jinja2)
+├── model_training/           -> Machine learning and pipeline generation
+│   ├── notebooks/            -> Development Jupyter notebooks 
+│   ├── grid_search.py        -> GPU-accelerated XGBoost Hyperparameter tuning
+│   └── train_new.py          -> Production model training pipeline
+├── .env                      
+└── README.md
 ```
 
-### 2. Setting up the API `.env` File
+## ⚙️ How it Works
 
-*This project is capable of utilizing Official Twitter Developer API keys. Here is how to configure them securely:*
+1. **Undocumented API Profiling:** `MASKOFF_Project/src/scrapper.py` utilizes undocumented endpoints to fetch profile data in real-time without relying on paid X API keys or slow Selenium drivers.
+2. **Metadata Processing:** Raw account features (Follower ratios, activity per day, bio flags) are mathematically derived and structured into a Pandas array.
+3. **Algorithmic Inference:** Data goes through our `grid_search` optimized XGBoost Classifier (achieving 92.58% accuracy). The `SHAP` framework simultaneously extracts the real-time contribution values of the individual metrics.
+4. **Jinja Rendering:** FastAPI magically injects the resulting calculation context directly into our custom HTML frontend canvas.
 
-1. Go to the [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard).
-2. Create a new "Project" and "App".
-3. Navigate to **Keys and Tokens**.
-4. Generate the following keys: **Consumer Key**, **Consumer Secret**, and **Bearer Token**.
-5. Inside the root of your project directory, create a file named exactly `.env` (ensure it has no filename extension like `.txt`).
-6. Open `.env` and paste your keys in this exact format:
+## 💻 Running Locally
 
-```env
-TWITTER_CONSUMER_KEY="your_extracted_api_key_here"
-TWITTER_CONSUMER_SECRET="your_extracted_api_secret_here"
-TWITTER_BEARER_TOKEN="your_extracted_bearer_token_here"
-```
-*(Your `.env` file is already listed in `.gitignore`, so these sensitive keys will never be accidentally pushed to GitHub).*
-
-### 3. Starting the Application
-
-With your environment active and `.env` configured, start the backend server:
-
-```powershell
-# Navigate into the project folder housing the source code
-cd MASKOFF_Project
-
-# Start the FastAPI web server
-uv run uvicorn src.main:app --host 127.0.0.1 --port 8000
-```
-
-### 4. Viewing the Web App
-1. Open your web browser (Chrome/Edge/Brave).
-2. Navigate to [http://localhost:8000](http://localhost:8000).
-3. Enter a target Twitter handle (e.g., `elonmusk` or `sundarpichai`) into the Search Bar.
-4. Click **Analyze** and wait for the AI to present the bot probability and its SHAP feature explanations!
-
----
-
-## ⚠️ Things to Take Care Of
-
-* **API Limits:** Free APIs and standard Developer endpoints have rate limits. If you spam the analyze button, Twitter might return a `429 Too Many Requests` or `402 Payment Required` block.
-* **Environment Paths:** Always ensure you are running `uvicorn` while your `.venv` is actively initialized. If you get `ModuleNotFoundError`, it usually means you ran python natively outside the `.venv`.
-* **Model Bias:** The model historically places heavy weight on the `verified` metric. Ensure you are evaluating public accounts. Private or suspended accounts will fail to scrape correctly.
+1. Initialize the virtual environment natively via terminal:
+   ```shell
+   uv venv
+   .\.venv\Scripts\activate
+   uv pip install -r requirements.txt # (Ensure dependencies align to the pipeline)
+   ```
+2. Navigate to the App directory and boot the backend server:
+   ```shell
+   cd MASKOFF_Project
+   uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+3. Open `http://127.0.0.1:8000/` in your browser.

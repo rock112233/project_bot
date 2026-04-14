@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MASKOFF - Bot Detection</title>
   <meta name="description" content="MASKOFF uses Explainable AI to identify hidden bot identities in Twitter/X profiles with behavioral analysis."/>
-  <link rel="stylesheet" href="/static/style.css"/>
+  <link rel="stylesheet" href="/static/style.css?v=3"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 </head>
 <body>
@@ -231,8 +231,10 @@
 
     // Profile
     const p = data.profile || {};
+    const uname = p.username || username;
     const fields = [
-      ['Username','@'+(p.username||username)],['Display Name',p.display_name||'-'],
+      ['Username', `<a href="https://x.com/${uname}" target="_blank" class="profile-link">@${uname}</a>`],
+      ['Display Name', p.display_name||'-'],
       ['Followers',p.followers??'-'],['Following',p.following??'-'],
       ['Tweets',p.tweets??'-'],['Joined',p.joined||'-'],
       ['Location',p.location||'-'],['Verified',p.verified?'Yes':'No'],
@@ -286,8 +288,21 @@
       </div>`;
     }).join('');
 
-    // Final Insight
-    document.getElementById('finalInsight').textContent = data.insight || '';
+    // Final Insight with Live Typing Animation
+    const insightText = data.insight || '';
+    const textContainer = document.getElementById('finalInsight');
+    textContainer.innerHTML = ''; // clear previous
+    let charIndex = 0;
+    // Clear any existing typing interval
+    if (window.typewriterInterval) clearInterval(window.typewriterInterval);
+    
+    window.typewriterInterval = setInterval(() => {
+      textContainer.textContent += insightText.charAt(charIndex);
+      charIndex++;
+      if (charIndex >= insightText.length) {
+        clearInterval(window.typewriterInterval);
+      }
+    }, 15); // Adjust speed here (ms per char)
 
     // SHAP Waterfall Chart
     renderWaterfall(data.shap_waterfall || []);

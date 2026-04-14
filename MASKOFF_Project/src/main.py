@@ -77,7 +77,6 @@ def predict(username: str):
 
         # 2. Build feature vector in correct order
         feature_values = [features[col] for col in FEATURE_COLUMNS]
-        print("FEATURE VALUES:", feature_values)
         X = pd.DataFrame([feature_values], columns=FEATURE_COLUMNS)
 
         # 3. Predict

@@ -7,6 +7,7 @@
   <meta name="description" content="MASKOFF uses Explainable AI to identify hidden bot identities in Twitter/X profiles with behavioral analysis."/>
   <link rel="stylesheet" href="/static/style.css?v=3"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -59,44 +60,22 @@
             <div class="badge" id="riskBadge"></div>
           </div>
         </div>
-        <div class="bar-labels-top"><span>Bot</span><span>Human</span></div>
-        <div class="bar-track">
-          <div class="bar-bot" id="botBar" style="width:0%"></div>
-          <div class="bar-human" id="humanBar" style="width:0%"></div>
+        <!-- Tug of War Decision Scale -->
+        <div class="tug-of-war-wrap">
+          <div class="tug-labels">
+            <span>👤 Human Likelihood</span>
+            <span>🤖 Bot Likelihood</span>
+          </div>
+          <div class="tug-scale">
+            <div class="tug-marker" id="tugMarker">
+              <span class="tug-pct-text" id="tugPctText">0%</span>
+            </div>
+          </div>
         </div>
-        <div class="bar-labels-bottom">
-          <span class="bot-label" id="botPct">0% Bot</span>
-          <span class="human-label" id="humanPct">0% Human</span>
-        </div>
-        <div class="gauge-wrap">
-          <svg viewBox="0 0 240 135" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Colored background segments: green → yellow → red -->
-            <defs>
-              <linearGradient id="gaugeGradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stop-color="#22c55e"/>
-                <stop offset="35%" stop-color="#4ade80"/>
-                <stop offset="50%" stop-color="#f59e0b"/>
-                <stop offset="75%" stop-color="#f97316"/>
-                <stop offset="100%" stop-color="#ef4444"/>
-              </linearGradient>
-            </defs>
-            <!-- Full colored arc background -->
-            <path d="M30 115 A90 90 0 0 1 210 115"
-              stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round" fill="none" opacity="0.2"/>
-            <!-- Active fill arc -->
-            <path d="M30 115 A90 90 0 0 1 210 115"
-              class="gauge-fill-path" stroke-width="20" stroke-linecap="round"
-              stroke-dasharray="283" id="gaugeFill" stroke-dashoffset="283" stroke="url(#gaugeGradient)"/>
-            <!-- Tick marks -->
-            <text x="22" y="125" class="gauge-label" font-size="9" text-anchor="middle">0%</text>
-            <text x="120" y="22" class="gauge-label" font-size="9" text-anchor="middle">50%</text>
-            <text x="218" y="125" class="gauge-label" font-size="9" text-anchor="middle">100%</text>
-            <!-- Needle -->
-            <line x1="120" y1="115" x2="120" y2="35" class="gauge-needle" id="gaugeNeedle"
-              stroke-width="3" stroke-linecap="round"/>
-            <circle cx="120" cy="115" r="7" class="gauge-dot"/>
-            <text x="120" y="132" text-anchor="middle" class="gauge-label" font-size="10">Bot Probability</text>
-          </svg>
+
+        <!-- Radar Chart Hexagon -->
+        <div class="radar-wrap" style="position:relative; width:100%; height:200px; margin-top:10px;">
+          <canvas id="radarChart"></canvas>
         </div>
       </div>
 
@@ -214,20 +193,22 @@
     // Wait a frame before starting animations so CSS transitions trigger correctly
     requestAnimationFrame(() => {
       setTimeout(() => {
-        document.getElementById('botBar').style.width   = botPct + '%';
-        document.getElementById('humanBar').style.width = humanPct + '%';
-
-        const arcOffset = 283 - (botPct / 100) * 283;
-        document.getElementById('gaugeFill').style.strokeDashoffset = arcOffset;
-
-        const needle = document.getElementById('gaugeNeedle');
-        const needleAngle = -90 + (botPct / 100) * 180;
-        needle.style.transform = `rotate(${needleAngle}deg)`;
+        const marker = document.getElementById('tugMarker');
+        marker.style.left = botPct + '%';
+        
+        // Dynamically change the marker background instead of the text color
+        const colorHex = botPct > 70 ? '#dc2626' : (botPct > 40 ? '#d97706' : '#16a34a');
+        marker.style.backgroundColor = colorHex;
+        marker.style.borderColor = colorHex;
+        
+        const text = document.getElementById('tugPctText');
+        text.textContent = botPct + '%';
+        text.style.color = '#ffffff'; // Always white for high contrast
       }, 100);
     });
 
-    document.getElementById('botPct').textContent   = `${botPct}% Bot`;
-    document.getElementById('humanPct').textContent = `${humanPct}% Human`;
+    // Render Radar Chart
+    renderRadarChart(data);
 
     // Profile
     const p = data.profile || {};
@@ -336,14 +317,72 @@
     }).join('');
   }
 
+  let radarInstance = null;
+  function renderRadarChart(data) {
+    if (radarInstance) radarInstance.destroy();
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    
+    const p = data.profile || {};
+    const ds = data.derived_stats || {};
+    const botLikely = data.bot_probability * 100 || 10;
+    
+    // Normalize data points into a 100-point scale for the spider web
+    const actFreq   = Math.min((ds.tweets_per_day||0) * 10, 100) || 5;
+    const follRatio = Math.min((ds.follower_ratio||0) * 10, 100) || 5;
+    const engage    = Math.min((ds.engagement_rate||0) * 20, 100) || 5;
+    
+    // Two new factors: Incomplete Profile Risk and Unverified Risk
+    const bioRisk   = p.has_bio ? 10 : 85;
+    const veriRisk  = p.verified ? 5 : 65;
+    
+    const htmlTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = htmlTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    const textColor = htmlTheme ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+
+    radarInstance = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['Follower Ratio', 'Activity Freq', 'Bot Probability', 'Engagement', 'No-Bio Risk', 'Unverified Risk'],
+        datasets: [{
+          label: 'Profile Matrix',
+          data: [follRatio, actFreq, botLikely, engage, bioRisk, veriRisk],
+          backgroundColor: 'rgba(59, 130, 246, 0.25)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            angleLines: { color: gridColor },
+            grid: { color: gridColor },
+            pointLabels: { color: textColor, font: { family: 'Inter', size: 10, weight: 'bold' } },
+            ticks: { display: false, min: 0, max: 100 }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
   function reset() {
     document.getElementById('resultSection').classList.remove('visible');
     document.getElementById('resultsPage').classList.remove('active');
     document.getElementById('usernameInput').value = '';
-    document.getElementById('gaugeFill').style.strokeDashoffset = '283';
-    document.getElementById('gaugeNeedle').style.transform = 'rotate(0deg)';
-    document.getElementById('botBar').style.width = '0%';
-    document.getElementById('humanBar').style.width = '0%';
+    document.getElementById('tugMarker').style.left = '50%';
+    document.getElementById('tugMarker').style.backgroundColor = 'var(--bg-card)';
+    document.getElementById('tugPctText').textContent = '0%';
+    document.getElementById('tugPctText').style.color = 'var(--text-primary)';
+    
+    if(radarInstance) radarInstance.destroy();
+
     window.scrollTo({top:0, behavior:'smooth'});
   }
 

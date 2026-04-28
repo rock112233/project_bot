@@ -35,9 +35,9 @@ The initial academic prototype of this project struggled from severe architectur
 ### 2.1 Dataset Manipulation & Class Imbalance
 
 - **What the Older Model did:** The original TwiBot-22 dataset featured a massive 6:1 class imbalance (most accounts were human). The prototype attempted to fix this using basic **Undersampling** (simply deleting thousands of human rows from the dataset to make it even with bots).
-  - **Proof of Failure:** This resulted in massive data loss. The older model achieved a "76% Accuracy" simply by indiscriminately guessing everything was Human, yielding a devastating **Bot Recall of 11% to 50%** (missing over half of the actual bots).
+  - **Proof of Failure:** This resulted in massive data loss. The older model achieved a "71% Accuracy", yielding a devastatingly low **Bot Precision of ~42%** (flagging thousands of innocent humans as bots).
 - **How We Tackled It:** We integrated **SMOTE-Tomek Links**.
-  - _What it is:_ A hybrid approach used during model training. **SMOTE** synthetically generates new data points for the minority "Bot" class by interpolating existing ones. Simultaneously, **Tomek Links** systematically removes noisy boundary points where a Bot and Human overlap. This creates hyper-defined decision boundaries entirely avoiding data destruction, vastly lifting specific bot detection recall.
+  - _What it is:_ A hybrid approach used during model training. **SMOTE** synthetically generates new data points for the minority "Bot" class by interpolating existing ones. Simultaneously, **Tomek Links** systematically removes noisy boundary points where a Bot and Human overlap. This creates hyper-defined decision boundaries entirely avoiding data destruction, vastly lifting specific bot detection precision to ~80% without data leakage.
 
 ### 2.2 Feature Extraction Bottlenecks
 
@@ -49,7 +49,7 @@ The initial academic prototype of this project struggled from severe architectur
 
 - **What the Older Model did:** Utilized baseline guessed parameters for the XGBoost engine.
 - **How We Tackled It:** We utilized **Grid Search Cross-Validation**.
-  - _What it is:_ Grid Search is an algorithm applied exclusively during the _training_ phase. It systematically constructs and evaluates the predictive model across hundreds (specifically 864) distinct combinations of hyperparameters (e.g., `learning_rate=0.05 vs 0.1`, `max_depth=4 vs 6`). It mathematically guarantees we are launching with the absolute optimal "brain structure" for our data shape, securing our final **92.58% accuracy**.
+  - _What it is:_ Grid Search is an algorithm applied exclusively during the _training_ phase. It systematically constructs and evaluates the predictive model across hundreds (specifically 48 core) distinct combinations of hyperparameters (e.g., `learning_rate=0.05 vs 0.1`, `max_depth=4 vs 8`). It mathematically guarantees we are launching with the absolute optimal "brain structure" for our data shape, securing our realistic **85.00% accuracy**.
 
 ### 2.4 INFERENCE BREAKDOWN: The "99.1% Confidence" Bug
 
